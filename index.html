@@ -14,10 +14,18 @@ async function unlock(){
  }catch(e){status('音频启动失败：'+e.message);return false}
 }
 function tone(freq=660,volume=.28,duration=.13){
- const t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();
- o.type='triangle';o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*.65,t+duration);
- g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);
- o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+duration+.01)
+ // Soft two-note wooden-block click: fixed pitch, short decay, no siren-like glide.
+ const t=ctx.currentTime,accent=freq>=800;
+ const level=accent?.13:.09;
+ const base=accent?680:520;
+ for(const [ratio,mix] of [[1,1],[1.52,.25]]){
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type='sine';o.frequency.setValueAtTime(base*ratio,t);
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.linearRampToValueAtTime(level*mix,t+.002);
+  g.gain.exponentialRampToValueAtTime(.0001,t+.065);
+  o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.07);
+ }
 }
 function drum(){
  const t=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();
@@ -35,7 +43,7 @@ async function startMet(){if(!await unlock())return;let i=0;tone(880);i++;timer=
 $('bpm').oninput=()=>{$('speed').textContent=$('bpm').value;if(timer){stop();startMet()}};
 $('met').onclick=()=>timer?stop():startMet();
 $('drum').onclick=async()=>{if(await unlock())drum()};
-$('test').onclick=async()=>{if(!await unlock())return;drum();setTimeout(()=>{tone(880);status('测试完成：先是低音鼓声，再是高音提示声。若仍无声，请检查网页是否静音、系统输出设备和音量')},350)};
+$('test').onclick=async()=>{if(!await unlock())return;drum();setTimeout(()=>{tone(880);status('测试完成：先是低音鼓声，再是柔和的木质节拍声。若仍无声，请检查网页是否静音、系统输出设备和音量')},350)};
 $('stop').onclick=stop;
 $('demo').onclick=async()=>{stop();if(!await unlock())return;status('播放节奏示范（临时音型，非原谱）');let beat=60000/Number($('bpm').value);[0,.5,1,1.5,2,3].forEach(v=>demoTimers.push(setTimeout(drum,v*beat)));demoTimers.push(setTimeout(()=>status('示范结束'),4*beat))};
 $('next').onclick=()=>{stop();status('第二关视唱练习正在开发中')};
